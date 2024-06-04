@@ -1,20 +1,27 @@
-@REM DATE 21:32 02.02.2023
+@REM DATE 10:13 03.06.2024
 
 @echo off
 
 if "%PRESET%" == "" set PRESET=slower
 if "%BV%" == "" set BV=3000k
 if "%MAXBV%" == "" set MAXBV=5000k
-if "%BUFSIZEV%" == "" set BUFSIZEV=2000k
-if "%SCALEV%" == "" set SCALEV=-2:'min(720,ih)'
+if "%BUFSIZEV%" == "" set BUFSIZEV=4000k
+if "%VIDEOH%" == "" set VIDEOH=720
 if "%CRF%" == "" set CRF=18
 if "%PROFILEV%" == "" set PROFILEV=high
 if "%TUNEV%" == "" set TUNEV=film
 if "%CODECV%" == "" set CODECV=libx264
 if "%CODECA%" == "" set CODECA=copy
 
+if "%SCALEV%" == "" (
+  set lSCALE="-2:'min(%VIDEOH%,ih)'"
+) else (
+  set lSCALE=%SCALEV%
+)
+
 if [%1] == [] goto help
 if [%1] == [?] goto help
+if [%1] == [v] goto variables
 if [%1] == [reset] goto reset
 if [%1] == [2pass] goto twopass
 if [%2] == [] goto args_count_1
@@ -48,13 +55,16 @@ echo 	%~nx0 [2pass] input
 echo 	%~nx0 [2pass] input output
 echo 	%~nx0 [2pass] HH:MM:SS input output
 echo 	%~nx0 [2pass] HH:MM:SS HH:MM:SS input output
-echo 	%~nx0 reset [540p || 720p || hq720p || 1080p]
+echo 	%~nx0 reset [540p 720p hq720p 1080p]
 echo EXAMPLE:
 echo 	set PRESET=fast
 echo 	%~nx0 reset 540p
 echo 	%~nx0 2pass 00:10:00 00:20:00 input.mkv output_540p.mp4
 echo 	%~nx0 reset 720p
 echo 	%~nx0 2pass 00:10:00 00:20:00 input.mkv output_720p.mp4
+
+:variables
+
 echo VARIABLES:
 echo 	CODECV = %CODECV% [list: ffmpeg -encoders]
 echo 	CODECA = %CODECA% [list: ffmpeg -encoders]
@@ -65,9 +75,10 @@ echo 	CRF = %CRF% [A lower value generally leads to higher quality and a subject
 echo 	BV = %BV%
 echo 	MAXBV = %MAXBV%
 echo 	BUFSIZEV = %BUFSIZEV%
+echo 	VIDEOH = %VIDEOH%
 echo 	SCALEV = %SCALEV%
 echo 	INPUTPARAMS = %INPUTPARAMS% [-benchmark -itsscale 1.0 -t 00:10:00]
-echo 	OUTPUTPARAMS = %OUTPUTPARAMS% [-dn]
+echo 	OUTPUTPARAMS = %OUTPUTPARAMS% [-dn -x264opts no-deblock -map_metadata -1]
 goto exit
 
 :setdefault
@@ -76,6 +87,7 @@ set PRESET=
 set BV=
 set MAXBV=
 set BUFSIZEV=
+set VIDEOH=
 set SCALEV=
 set CRF=
 set PROFILEV=
@@ -90,6 +102,8 @@ goto exit
 
 set BV=
 set MAXBV=
+set BUFSIZEV=
+set VIDEOH=
 set SCALEV=
 goto exit
 
@@ -97,13 +111,17 @@ goto exit
 
 set BV=1800k
 set MAXBV=3000k
-set SCALEV=-1:'min(540,ih)'
+set BUFSIZEV=2400k
+set VIDEOH=540
+set SCALEV=
 goto exit
 
 :setHQ720p
 
 set BV=4100k
 set MAXBV=6700k
+set BUFSIZEV=5400k
+set VIDEOH=720
 set SCALEV=
 goto exit
 
@@ -111,51 +129,62 @@ goto exit
 
 set BV=6000k
 set MAXBV=10000k
-set SCALEV=-1:'min(1080,ih)'
+set BUFSIZEV=8000k
+set VIDEOH=1080
+set SCALEV=
 goto exit
 
 :args_count_1
 
-ffmpeg -hide_banner %INPUTPARAMS% -i %1 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%" "%~n1.mp4"
+ffmpeg -hide_banner %INPUTPARAMS% -i %1 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%lSCALE%" "%~n1.%VIDEOH%.mp4"
 goto exit
 
 :args_count_2
 
-ffmpeg -hide_banner %INPUTPARAMS% -i %1 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%" %2
+ffmpeg -hide_banner %INPUTPARAMS% -i %1 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%lSCALE%" %2
 goto exit
 
 :args_count_3
 
-ffmpeg -hide_banner -ss %1 %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%" %3
+ffmpeg -hide_banner -ss %1 %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%lSCALE%" %3
 goto exit
 
 :args_count_4
 
-ffmpeg -hide_banner -ss %1 -to %2 %INPUTPARAMS% -i %3 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%" %4
+ffmpeg -hide_banner -ss %1 -to %2 %INPUTPARAMS% -i %3 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%lSCALE%" %4
 goto exit
 
 :args_2pass_count_1
 
-ffmpeg -hide_banner -y %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%SCALEV%" -an -pass 1 -f null NUL && ^
-ffmpeg -hide_banner %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%" -pass 2 "%~n2.mp4"
-goto exit
+ffmpeg -hide_banner -y %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%lSCALE%" -an -pass 1 -f null NUL && ^
+ffmpeg -hide_banner %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%lSCALE%" -pass 2 "%~n2.%VIDEOH%.mp4"
+goto clean_2pass
 
 :args_2pass_count_2
 
-ffmpeg -hide_banner -y %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%SCALEV%" -an -pass 1 -f null NUL && ^
-ffmpeg -hide_banner %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%" -pass 2 %3
-goto exit
+ffmpeg -hide_banner -y %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%lSCALE%" -an -pass 1 -f null NUL && ^
+ffmpeg -hide_banner %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%lSCALE%" -pass 2 %3
+goto clean_2pass
 
 :args_2pass_count_3
 
-ffmpeg -hide_banner -y -ss %2 %INPUTPARAMS% -i %3 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%SCALEV%" -an -pass 1 -f null NUL && ^
-ffmpeg -hide_banner -ss %2 %INPUTPARAMS% -i %3 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%" -pass 2 %4
-goto exit
+ffmpeg -hide_banner -y -ss %2 %INPUTPARAMS% -i %3 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%lSCALE%" -an -pass 1 -f null NUL && ^
+ffmpeg -hide_banner -ss %2 %INPUTPARAMS% -i %3 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%lSCALE%" -pass 2 %4
+goto clean_2pass
 
 :args_2pass_count_4
 
-ffmpeg -hide_banner -y -ss %2 -to %3 %INPUTPARAMS% -i %4 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%SCALEV%" -an -pass 1 -f null NUL && ^
-ffmpeg -hide_banner -ss %2 -to %3 %INPUTPARAMS% -i %4 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%" -pass 2 %5
+ffmpeg -hide_banner -y -ss %2 -to %3 %INPUTPARAMS% -i %4 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%lSCALE%" -an -pass 1 -f null NUL && ^
+ffmpeg -hide_banner -ss %2 -to %3 %INPUTPARAMS% -i %4 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%lSCALE%" -pass 2 %5
+goto clean_2pass
+
+:clean_2pass
+
+del /Q ffmpeg2pass-0.log ffmpeg2pass-0.log.mbtree
+goto exit
+
+:check_time_format
+echo %1 | findstr /i ^[0-9][0-9]*[:][0-9][0-9]* > nul
 goto exit
 
 :exit

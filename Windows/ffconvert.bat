@@ -1,3 +1,7 @@
-for /R  %%f in (*.avi,*.wmv,*.flv,*.mpeg,*.mpg,*.mkv,*.webm) do (
-	ffmpeg -i "%%~f" -c:v libx264 -c:a aac -b:a 128k -map_metadata -1 -crf 22 -preset slow "%%~nf.mp4"
+@REM 18:00 18.10.2023
+@echo off
+
+for /R  %%f in (*.mp4,*.mkv,*.avi,*.m4v,*.mpeg,*.mpg,*.wmv,*.flv,*.vob,*.webm) do (
+ 	ffconvert_scale %* "%%~f"
+	timeout /t 60
 )
