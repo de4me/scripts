@@ -2,6 +2,6 @@
 @echo off
 
 for /R  %%f in (*.mp4,*.mkv,*.avi,*.m4v,*.mpeg,*.mpg,*.wmv,*.flv,*.vob,*.webm) do (
- 	ffconvert_scale %* "%%~f"
+ 	ffconvert %* "%%~f"
 	timeout /t 60
 )
