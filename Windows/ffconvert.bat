@@ -1,8 +1,62 @@
-@REM DATE 20:23 04.01.2025
+@REM DATE 11:18 08.01.2025
 
 @echo off
 
-if [%1] == [reset] goto reset
+if [%1] == [reset] (
+ if [%2] == [] (
+  set PRESET=
+  set BV=
+  set MAXBV=
+  set BUFSIZEV=
+  set VIDEOH=
+  set SCALEV=
+  set CRF=
+  set PROFILEV=
+  set TUNEV=
+  set CODECV=
+  set CODECA=
+  set FILTERV=
+  set INPUTPARAMS=
+  set OUTPUTPARAMS=
+  set NAMESUFFIX=
+  goto exit
+ ) else if [%2] == [540p] (
+  set BV=1800k
+  set MAXBV=3000k
+  set BUFSIZEV=3600k
+  set VIDEOH=540
+  set SCALEV=
+  goto exit
+ ) else if [%2] == [720p] (
+  set BV=
+  set MAXBV=
+  set BUFSIZEV=
+  set VIDEOH=
+  set SCALEV=
+  goto exit
+ ) else if [%2] == [hq720p] (
+  set BV=4100k
+  set MAXBV=7000k
+  set BUFSIZEV=8200k
+  set VIDEOH=720
+  set SCALEV=
+  goto exit
+ ) else if [%2] == [1080p] (
+  set BV=5000k
+  set MAXBV=8000k
+  set BUFSIZEV=10000k
+  set VIDEOH=1080
+  set SCALEV=
+  goto exit
+ ) else if [%2] == [hq1080p] (
+  set BV=6000k
+  set MAXBV=10000k
+  set BUFSIZEV=12000k
+  set VIDEOH=1080
+  set SCALEV=
+  goto exit
+ )
+)
 
 setlocal
 
@@ -22,6 +76,7 @@ if "%FILENAMESUFFIX%" == "" set FILENAMESUFFIX="_%VIDEOH%p"
 if [%1] == [] goto help
 if [%1] == [?] goto help
 if [%1] == [v] goto variables
+if [%1] == [reset] goto help
 if [%1] == [2pass] goto twopass
 if [%2] == [] goto args_count_1
 if [%3] == [] goto args_count_2
@@ -56,7 +111,7 @@ echo 	VIDEOH = %VIDEOH%
 echo 	SCALEV = %SCALEV%
 echo 	FILTERV = %FILTERV% [crop=in_w:in_h-44]
 echo 	INPUTPARAMS = %INPUTPARAMS% [-benchmark -itsscale 1.0 -t 00:10:00]
-echo 	OUTPUTPARAMS = %OUTPUTPARAMS% [-dn -x264opts no-deblock -map_metadata -1]
+echo 	OUTPUTPARAMS = %OUTPUTPARAMS% [-dn -an -x264opts keyint=40:min-keyint=10:no-deblock -map_metadata -1]
 echo 	FILENAMESUFFIX = %FILENAMESUFFIX% [_720p]
 echo 	LOGNAMEPREFIX = %LOGNAMEPREFIX% [ffmpeg2pass]
 goto clean_exit
@@ -77,81 +132,6 @@ echo 	%~n0 2pass 00:10:00 00:20:00 input.mkv output_540p.mp4
 echo 	%~n0 reset 720p
 echo 	%~n0 2pass 00:10:00 00:20:00 input.mkv output_720p.mp4
 goto clean_exit
-
-:reset
-
-if [%2] == [] goto setdefault
-if [%2] == [540p] goto set540p
-if [%2] == [720p] goto set720p
-if [%2] == [hq720p] goto setHQ720p
-if [%2] == [1080p] goto set1080p
-if [%2] == [hq1080p] goto setHQ1080p
-setlocal
-goto help
-
-:setdefault
-
-set PRESET=
-set BV=
-set MAXBV=
-set BUFSIZEV=
-set VIDEOH=
-set SCALEV=
-set CRF=
-set PROFILEV=
-set TUNEV=
-set CODECV=
-set CODECA=
-set FILTERV=
-set INPUTPARAMS=
-set OUTPUTPARAMS=
-set NAMESUFFIX=
-goto exit
-
-:set540p
-
-set BV=1800k
-set MAXBV=3000k
-set BUFSIZEV=3600k
-set VIDEOH=540
-set SCALEV=
-goto exit
-
-:set720p
-
-set BV=
-set MAXBV=
-set BUFSIZEV=
-set VIDEOH=
-set SCALEV=
-goto exit
-
-:setHQ720p
-
-set BV=4100k
-set MAXBV=7000k
-set BUFSIZEV=8200k
-set VIDEOH=720
-set SCALEV=
-goto exit
-
-:set1080p
-
-set BV=5000k
-set MAXBV=8000k
-set BUFSIZEV=10000k
-set VIDEOH=1080
-set SCALEV=
-goto exit
-
-:setHQ1080p
-
-set BV=6000k
-set MAXBV=10000k
-set BUFSIZEV=12000k
-set VIDEOH=1080
-set SCALEV=
-goto exit
 
 :args_count_1
 
@@ -206,5 +186,3 @@ del /Q "%LOGNAMEPREFIX%-*.log" "%LOGNAMEPREFIX%-*.log.mbtree"
 endlocal
 
 :exit
-
-
