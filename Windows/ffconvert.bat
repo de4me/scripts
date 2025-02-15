@@ -1,4 +1,4 @@
-@REM DATE 11:18 08.01.2025
+@REM DATE 22:56 15.02.2025
 
 @echo off
 
@@ -21,9 +21,16 @@ if [%1] == [reset] (
   set NAMESUFFIX=
   goto exit
  ) else if [%2] == [540p] (
-  set BV=1800k
+  set BV=2000k
   set MAXBV=3000k
-  set BUFSIZEV=3600k
+  set BUFSIZEV=6000k
+  set VIDEOH=540
+  set SCALEV=
+  goto exit
+  ) else if [%2] == [hq540p] (
+  set BV=2500k
+  set MAXBV=4000k
+  set BUFSIZEV=8000k
   set VIDEOH=540
   set SCALEV=
   goto exit
@@ -35,23 +42,23 @@ if [%1] == [reset] (
   set SCALEV=
   goto exit
  ) else if [%2] == [hq720p] (
-  set BV=4100k
+  set BV=4000k
   set MAXBV=7000k
-  set BUFSIZEV=8200k
+  set BUFSIZEV=14000k
   set VIDEOH=720
   set SCALEV=
   goto exit
  ) else if [%2] == [1080p] (
   set BV=5000k
   set MAXBV=8000k
-  set BUFSIZEV=10000k
+  set BUFSIZEV=16000k
   set VIDEOH=1080
   set SCALEV=
   goto exit
  ) else if [%2] == [hq1080p] (
-  set BV=6000k
+  set BV=7000k
   set MAXBV=10000k
-  set BUFSIZEV=12000k
+  set BUFSIZEV=20000k
   set VIDEOH=1080
   set SCALEV=
   goto exit
@@ -63,20 +70,33 @@ setlocal
 if "%PRESET%" == "" set PRESET=slower
 if "%BV%" == "" set BV=3000k
 if "%MAXBV%" == "" set MAXBV=5000k
-if "%BUFSIZEV%" == "" set BUFSIZEV=6000k
+if "%BUFSIZEV%" == "" set BUFSIZEV=10000k
 if "%VIDEOH%" == "" set VIDEOH=720
 if "%CRF%" == "" set CRF=18
 if "%PROFILEV%" == "" set PROFILEV=high
 if "%TUNEV%" == "" set TUNEV=film
 if "%CODECV%" == "" set CODECV=libx264
 if "%CODECA%" == "" set CODECA=copy
-if "%SCALEV%" == "" set SCALEV="-2:'min(%VIDEOH%,ih)'"
-if "%FILENAMESUFFIX%" == "" set FILENAMESUFFIX="_%VIDEOH%p"
+if "%SCALEV%" == "" set SCALEV=-2:'min(%VIDEOH%,ih)'
+if "%FILENAMESUFFIX%" == "" set FILENAMESUFFIX=_%VIDEOH%p
+if "%THREADSNUMBER%" == "" set THREADSNUMBER=0
 
 if [%1] == [] goto help
 if [%1] == [?] goto help
 if [%1] == [v] goto variables
 if [%1] == [reset] goto help
+
+if [%1] == [crf] (
+ shift /1
+) else if [%1] == [abr] (
+ shift /1
+ set OUTPUTPARAMS=-b:v %BV% %OUTPUTPARAMS%
+) else (
+ if [%1] == [vbv] shift /1
+ set OUTPUTPARAMS=-b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% %OUTPUTPARAMS%
+)
+
+if [%1] == [] goto help
 if [%1] == [2pass] goto twopass
 if [%2] == [] goto args_count_1
 if [%3] == [] goto args_count_2
@@ -103,7 +123,7 @@ echo 	CODECA = %CODECA% [list: ffmpeg -encoders]
 echo 	PRESET = %PRESET% [ultrafast superfast veryfast faster fast medium slow slower veryslow]
 echo 	PROFILEV = %PROFILEV% [baseline main high high10 high422 high444]
 echo 	TUNEV = %TUNEV% [film animation grain stillimage fastdecode zerolatency]
-echo 	CRF = %CRF% [A lower value generally leads to higher quality and a subjectively sane range is 17-28]
+echo 	CRF = %CRF% [A lower value generally leads to higher quality and a subjectively sane range is x264: 17-28 (23), x265: 24-34 (28)]
 echo 	BV = %BV%
 echo 	MAXBV = %MAXBV%
 echo 	BUFSIZEV = %BUFSIZEV%
@@ -111,74 +131,91 @@ echo 	VIDEOH = %VIDEOH%
 echo 	SCALEV = %SCALEV%
 echo 	FILTERV = %FILTERV% [crop=in_w:in_h-44]
 echo 	INPUTPARAMS = %INPUTPARAMS% [-benchmark -itsscale 1.0 -t 00:10:00]
-echo 	OUTPUTPARAMS = %OUTPUTPARAMS% [-dn -an -x264opts keyint=40:min-keyint=10:no-deblock -map_metadata -1]
+echo 	OUTPUTPARAMS = %OUTPUTPARAMS% [-dn -an -map_metadata -1 -c:s mov_text -x264-params keyint=40:min-keyint=10:no-deblock]
 echo 	FILENAMESUFFIX = %FILENAMESUFFIX% [_720p]
 echo 	LOGNAMEPREFIX = %LOGNAMEPREFIX% [ffmpeg2pass]
+echo 	THREADSNUMBER = %THREADSNUMBER% [number of threads: 0 - optimal]
 goto clean_exit
 
 :help
 
 echo USE:
 echo 	%~n0 [? v]
-echo 	%~n0 [2pass] input
-echo 	%~n0 [2pass] input output
-echo 	%~n0 [2pass] HH:MM:SS input output
-echo 	%~n0 [2pass] HH:MM:SS HH:MM:SS input output
-echo 	%~n0 reset [540p 720p hq720p 1080p hq1080p]
+echo 	%~n0 [crf abr vbv] [2pass] input
+echo 	%~n0 [crf abr vbv] [2pass] input output
+echo 	%~n0 [crf abr vbv] [2pass] HH:MM:SS input output
+echo 	%~n0 [crf abr vbv] [2pass] HH:MM:SS HH:MM:SS input output
+echo 	%~n0 reset [540p hq540p 720p hq720p 1080p hq1080p]
 echo EXAMPLE:
 echo 	set PRESET=fast
 echo 	%~n0 reset 540p
-echo 	%~n0 2pass 00:10:00 00:20:00 input.mkv output_540p.mp4
+echo 	%~n0 crf 2pass 00:10:00 00:20:00 input.mkv output_540p.mp4
 echo 	%~n0 reset 720p
-echo 	%~n0 2pass 00:10:00 00:20:00 input.mkv output_720p.mp4
+echo 	%~n0 vbv 2pass 00:10:00 00:20:00 input.mkv output_720p.mp4
 goto clean_exit
 
 :args_count_1
 
-ffmpeg -hide_banner %INPUTPARAMS% -i %1 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" "%~n1%FILENAMESUFFIX%.mp4"
-goto clean_exit
+set INPUTFILENAME=%1
+set OUTPUTFILENAME="%~n1%FILENAMESUFFIX%.mp4"
+goto convert
 
 :args_count_2
 
-ffmpeg -hide_banner %INPUTPARAMS% -i %1 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" %2
-goto clean_exit
+set INPUTFILENAME=%1
+set OUTPUTFILENAME=%2
+goto convert
 
 :args_count_3
 
-ffmpeg -hide_banner -ss %1 %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" %3
-goto clean_exit
+set INPUTFILENAME=%2
+set OUTPUTFILENAME=%3
+set INPUTPARAMS=-ss %1 %INPUTPARAMS%
+goto convert
 
 :args_count_4
 
-ffmpeg -hide_banner -ss %1 -to %2 %INPUTPARAMS% -i %3 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" %4
-goto clean_exit
+set INPUTFILENAME=%3
+set OUTPUTFILENAME=%4
+set INPUTPARAMS=-ss %1 -to %2 %INPUTPARAMS%
+goto convert
 
 :args_2pass_count_1
 
-ffmpeg -hide_banner -y %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -an -pass 1 -passlogfile "%LOGNAMEPREFIX%" -f null NUL && ^
-ffmpeg -hide_banner %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -pass 2 -passlogfile "%LOGNAMEPREFIX%" "%~n2%FILENAMESUFFIX%.mp4"
-goto clean_2pass
+set INPUTFILENAME=%2
+set OUTPUTFILENAME="%~n2%FILENAMESUFFIX%.mp4"
+goto convert_2pass
+
 
 :args_2pass_count_2
 
-ffmpeg -hide_banner -y %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -an -pass 1 -passlogfile "%LOGNAMEPREFIX%" -f null NUL && ^
-ffmpeg -hide_banner %INPUTPARAMS% -i %2 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -pass 2 -passlogfile "%LOGNAMEPREFIX%" %3
-goto clean_2pass
+set INPUTFILENAME=%2
+set OUTPUTFILENAME=%3
+goto convert_2pass
 
 :args_2pass_count_3
 
-ffmpeg -hide_banner -y -ss %2 %INPUTPARAMS% -i %3 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -an -pass 1 -passlogfile "%LOGNAMEPREFIX%" -f null NUL && ^
-ffmpeg -hide_banner -ss %2 %INPUTPARAMS% -i %3 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -pass 2 -passlogfile "%LOGNAMEPREFIX%" %4
-goto clean_2pass
+set INPUTFILENAME=%3
+set OUTPUTFILENAME=%4
+set INPUTPARAMS=-ss %2 %INPUTPARAMS%
+goto convert_2pass
 
 :args_2pass_count_4
 
-ffmpeg -hide_banner -y -ss %2 -to %3 %INPUTPARAMS% -i %4 %OUTPUTPARAMS% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -an -pass 1 -passlogfile "%LOGNAMEPREFIX%" -f null NUL && ^
-ffmpeg -hide_banner -ss %2 -to %3 %INPUTPARAMS% -i %4 %OUTPUTPARAMS% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -b:v %BV% -maxrate %MAXBV% -bufsize %BUFSIZEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -pass 2 -passlogfile "%LOGNAMEPREFIX%" %5
-goto clean_2pass
+set INPUTFILENAME=%4
+set OUTPUTFILENAME=%5
+set INPUTPARAMS=-ss %2 -to %3 %INPUTPARAMS%
+goto convert_2pass
 
-:clean_2pass
+:convert
 
+ffmpeg -hide_banner %INPUTPARAMS% -i %INPUTFILENAME% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -threads %THREADSNUMBER% %OUTPUTPARAMS% %OUTPUTFILENAME%
+goto clean_exit
+
+:convert_2pass
+
+ffmpeg -hide_banner -y %INPUTPARAMS% -i %INPUTFILENAME% -c:v %CODECV% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -an  -threads %THREADSNUMBER% %OUTPUTPARAMS% -pass 1 -passlogfile "%LOGNAMEPREFIX%" -f null NUL && ^
+ffmpeg -hide_banner %INPUTPARAMS% -i %INPUTFILENAME% -c:v %CODECV% -c:a %CODECA% -preset %PRESET% -profile:v %PROFILEV% -tune %TUNEV% -movflags +faststart -crf %CRF% -vf "scale=%SCALEV%,%FILTERV%" -threads %THREADSNUMBER% %OUTPUTPARAMS% -pass 2 -passlogfile "%LOGNAMEPREFIX%" %OUTPUTFILENAME%
 del /Q "%LOGNAMEPREFIX%-*.log" "%LOGNAMEPREFIX%-*.log.mbtree"
 
 :clean_exit
