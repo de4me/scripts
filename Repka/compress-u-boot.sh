@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 
 # Compress u-boot bootloader
-# version: 2025-02-15
+# version: 2025-07-21
 
 if [ -z "$1" ]; then
   export UBOOTROOT=~/u-boot-repka
@@ -11,14 +11,12 @@ fi
 
 echo "process: $UBOOTROOT"
 
-cd ~/
-mkdir u-boot-repka-pi3/
-
-cd u-boot-repka-pi3/
+mkdir ~/u-boot-repka-pi3/
+cd ~/u-boot-repka-pi3/
 mkdir dtb/ bootloader/
 
 cp $UBOOTROOT/u-boot-sunxi-with-spl.bin bootloader/
-cp $UBOOTROOT/arch/arm/dts/*repka*.dtb dtb/
+cp $UBOOTROOT/arch/arm/dts/*repka*.dtb* dtb/
 
 cd ~/
 rm u-boot-repka-pi3.tar.gz
