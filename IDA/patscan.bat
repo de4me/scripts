@@ -38,8 +38,6 @@ goto :eof
 
 :convert_rename
 
-echo %~1 %~2 
-
 for /l %%n in (1,1,99) do (
   if not exist "%~2\%~n1%%n.pat" (
     %PATTOOL% -p%SIGLENGTH% "%~1" "%~2\%~n1%%n.pat"
